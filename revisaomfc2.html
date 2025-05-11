@@ -1,0 +1,1309 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Quiz Educacional</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background-color: #f8f9fa; padding-top: 20px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    .quiz-container { max-width: 800px; margin: 0 auto; background: #fff; border-radius: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.1); padding: 30px; }
+    .timer { position: fixed; top: 10px; right: 10px; background: #007bff; color: #fff; padding: 10px 15px; border-radius: 25px; font-weight: bold; z-index: 1000; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+    .option { cursor: pointer; padding: 15px; margin: 10px 0; border-radius: 8px; border: 1px solid #dee2e6; transition: all .3s; }
+    .option:hover { background: #f1f8ff; border-color: #b8daff; }
+    .correct { background: #d4edda !important; border-color: #c3e6cb !important; color: #155724; }
+    .incorrect { background: #f8d7da !important; border-color: #f5c6cb !important; color: #721c24; }
+    .explanation { background: #e9ecef; padding: 15px; border-radius: 8px; margin-top: 15px; display: none; }
+    .question-list-item { cursor: pointer; padding: 15px; margin: 10px 0; border-radius: 8px; border: 1px solid #dee2e6; background: #f8f9fa; }
+    .question-detail { background: #fff; padding: 15px; border-radius: 8px; margin-top: 10px; display: none; }
+    .leaderboard-table { width: 100%; margin-top: 20px; }
+    .section { display: none; }
+    .active { display: block; }
+    h1, h2, h3 { color: #0056b3; }
+    .btn-next { display: none; }
+    .continue-quiz { margin-top: 20px; }
+  </style>
+</head>
+<body>
+
+<div id="timer" class="timer" style="display:none;">00:00</div>
+
+<div class="container quiz-container">
+  <!-- TELA INICIAL -->
+  <section id="start-section" class="section active">
+    <h1 class="text-center mb-4">Título do Seu Quiz</h1>
+    <div class="mb-3">
+      <label for="username" class="form-label">Digite seu nome:</label>
+      <input type="text" class="form-control" id="username" placeholder="Seu nome">
+    </div>
+    <button id="start-button" class="btn btn-primary btn-lg w-100">Iniciar Quiz</button>
+    <button id="continue-button" class="btn btn-success btn-lg w-100 continue-quiz" style="display:none;">Continuar Quiz</button>
+    <button id="clear-progress-button" class="btn btn-outline-danger btn-lg w-100 mt-3" style="display:none;">Limpar Progresso Salvo</button>
+  </section>
+
+  <!-- TELA QUIZ -->
+  <section id="quiz-section" class="section">
+    <h2 id="question-number" class="mb-3"></h2>
+    <h3 id="question-text" class="mb-4"></h3>
+    <div id="options-container"></div>
+    <div id="explanation" class="explanation"></div>
+    <button id="next-button" class="btn btn-primary mt-3 btn-next">Próxima Questão</button>
+  </section>
+
+  <!-- RESULTADOS -->
+  <section id="results-section" class="section">
+    <h2 class="text-center mb-4">Resultado Final</h2>
+    <div class="alert alert-primary">
+      <strong id="final-score"></strong>
+      <div id="final-time" class="mt-2"></div>
+    </div>
+    <h3 class="mb-3">Suas respostas:</h3>
+    <div id="questions-list"></div>
+    <h3 class="mt-4 mb-3">Classificação</h3>
+    <div class="table-responsive">
+      <table class="table table-striped leaderboard-table">
+        <thead>
+          <tr><th>#</th><th>Nome</th><th>Pontuação</th><th>Tempo</th></tr>
+        </thead>
+        <tbody id="leaderboard-body"></tbody>
+      </table>
+    </div>
+    <button id="restart-button" class="btn btn-primary btn-lg w-100 mt-4">Voltar ao Início</button>
+  </section>
+</div>
+
+<!-- Bootstrap Bundle -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+
+<script>
+  
+
+   // === QUESTÕES DO QUIZ - SUBSTITUA ESTE ARRAY PELAS NOVAS QUESTÕES ===
+  const questions = [
+    // Exemplo de objeto de questão
+    {
+question: "Segundo o CDC, quais são as três fases da infecção por HIV?",
+options: ["Infecção Aguda Sintomática, Sintomática não classificável e AIDS", "Infecção Assintomática aguda, Distúrbios sintomáticos não classificáveis e AIDS", "Fase aguda, fase crônica e fase terminal", "Fase de incubação, fase de latência e fase sintomática", "Infecção Aguda, Latência e Crise imunológica"],
+correctIndex: 1,
+explanation: "O CDC classifica a infecção pelo HIV em infecção assintomática aguda, distúrbios sintomáticos não classificáveis e AIDS."
+},
+{
+question: "Qual enzima permite ao HIV transcrever RNA viral em DNA?",
+options: ["Integrase", "Protease", "Transcriptase reversa", "RNA polimerase", "Helicase"],
+correctIndex: 2,
+explanation: "A transcriptase reversa converte o RNA viral em DNA para integração ao genoma do hospedeiro."
+},
+{
+question: "Qual é o reservatório natural do HIV?",
+options: ["Ser humano", "Macacos", "Aves", "Anfíbios", "Água contaminada"],
+correctIndex: 0,
+explanation: "O ser humano é o único reservatório do HIV."
+},
+{
+question: "Quais são as principais vias de transmissão do HIV?",
+options: ["Sexual, sanguínea e fecal-oral", "Sexual, parenteral e inalatória", "Sexual, sanguínea e materno-infantil", "Sexual, respiratória e materno-infantil", "Sanguínea, respiratória e digestiva"],
+correctIndex: 2,
+explanation: "O HIV é transmitido por via sexual, sanguínea (parenteral) e materno-infantil (gestação, parto, amamentação)."
+},
+{
+question: "Qual é o tempo médio do período de incubação da infecção por HIV até a síndrome retroviral aguda?",
+options: ["2 a 4 dias", "5 a 7 dias", "1 a 3 semanas", "1 a 3 meses", "6 a 12 meses"],
+correctIndex: 2,
+explanation: "O período de incubação até a síndrome retroviral aguda varia de uma a três semanas."
+},
+{
+question: "Qual é a sequência correta de detecção dos marcadores de infecção no HIV?",
+options: ["Anticorpos → p24 → RNA viral", "p24 → RNA viral → anticorpos", "RNA viral → p24 → anticorpos", "RNA viral → anticorpos → p24", "Anticorpos → RNA viral → p24"],
+correctIndex: 2,
+explanation: "Primeiro detecta-se RNA viral, depois o antígeno p24 e, por fim, os anticorpos."
+},
+{
+question: "O que caracteriza a janela diagnóstica do HIV?",
+options: ["Tempo entre exposição e aparecimento de sintomas", "Tempo entre infecção e detecção de um marcador", "Período de máxima infectividade", "Duração do tratamento antirretroviral", "Tempo entre positividade de teste rápido e laboratorial"],
+correctIndex: 1,
+explanation: "Janela diagnóstica é o intervalo entre a infecção e a detecção de um marcador específico."
+},
+{
+question: "Qual metodologia é mais utilizada nos testes rápidos de HIV?",
+options: ["ELISA", "Western blot", "Imunocromatografia", "PCR em tempo real", "Aglutinação"],
+correctIndex: 2,
+explanation: "Os testes rápidos de HIV utilizam principalmente imunocromatografia."
+},
+{
+question: "Em quanto tempo o teste rápido de HIV fornece resultado?",
+options: ["Em até 10 minutos", "Em até 30 minutos", "Em até 1 hora", "Em até 24 horas", "Em até 48 horas"],
+correctIndex: 1,
+explanation: "Testes rápidos fornecem resultado em até 30 minutos."
+},
+{
+question: "Qual o esquema recomendado de PEP – Profilaxia Pós-Exposição Sexual?",
+options: ["AZT + 3TC + EFV por 14 dias", "TDF + 3TC + DTG por 28 dias", "TDF + FTC + RAL por 60 dias", "ABC + 3TC + DTG por 28 dias", "AZT + 3TC + DTG por 7 dias"],
+correctIndex: 1,
+explanation: "O esquema único de PEP é tenofovir + lamivudina + dolutegravir por 28 dias."
+},
+{
+question: "Em quanto tempo, no máximo, deve ser iniciado o PEP após exposição?",
+options: ["Até 1 hora", "Até 24 horas", "Até 48 horas", "Até 72 horas", "Até 7 dias"],
+correctIndex: 3,
+explanation: "A PEP deve ser iniciada nas primeiras 2 horas, até no máximo 72 horas após a exposição."
+},
+{
+question: "Qual o esquema de PrEP – Profilaxia Pré-Exposição?",
+options: ["TDF + Emtricitabina diária", "AZT + 3TC diária", "TDF + DTG semanal", "ABC + 3TC diária", "TDF + RAL mensal"],
+correctIndex: 0,
+explanation: "A PrEP utiliza tenofovir + emtricitabina em uso diário e contínuo."
+},
+{
+question: "Para quais grupos a PrEP é indicada?",
+options: ["Pacientes com AIDS avançada", "Trabalhadores da saúde", "Parcerias sorodiferentes e profissionais do sexo", "Gestantes HIV+", "Pacientes pediátricos expostos"],
+correctIndex: 2,
+explanation: "PrEP é indicada para grupos não infectados de maior risco, como parcerias sorodiferentes e trabalhadores do sexo."
+},
+{
+question: "Qual é a meta 95-95-95 para eliminação da AIDS até 2030?",
+options: ["95% de diagnóstico, 95% de tratamento e 95% de supressão viral", "95% de vacinação, 95% de diagnóstico e 95% de cura", "95% de rastreamento, 95% de prevenção e 95% de supressão viral", "95% de diagnóstico, 95% de profilaxia e 95% de supressão viral", "95% de tratamento, 95% de supressão viral e 95% de prevenção"],
+correctIndex: 0,
+explanation: "Meta 95-95-95 visa diagnosticar, tratar e suprimir viralmente 95% das pessoas vivendo com HIV."
+},
+{
+question: "Desde quando a AIDS é de notificação compulsória no Brasil?",
+options: ["Desde 1980", "Desde 1986", "Desde 2000", "Desde 2016", "Desde 2024"],
+correctIndex: 1,
+explanation: "A notificação compulsória da AIDS no Brasil ocorre desde 1986."
+},
+{
+question: "Um paciente apresenta resultado positivo para p24, mas negativo para anticorpos. Em qual fase da infecção por HIV ele provavelmente se encontra?",
+options: ["Fase de incubação", "Período de latência", "Síndrome retroviral aguda", "Fase crônica tardia", "AIDS"],
+correctIndex: 2,
+explanation: "A detecção isolada de p24 ocorre na fase aguda (síndrome retroviral aguda) antes da soroconversão."
+},
+{
+question: "Um indivíduo sorodiscordante deseja reduzir risco de transmissão. Quais estratégias de prevenção combinada seriam recomendadas?",
+options: ["Uso de preservativos apenas", "PrEP + uso de preservativos e testagem regular", "Somente PrEP", "Somente PEP após exposição", "Tratamento antirretroviral por infecção já existente"],
+correctIndex: 1,
+explanation: "A combinação de PrEP, preservativos e testagem frequente maximiza a prevenção."
+},
+{
+question: "Considerando o período médio de latência de dez anos e a meta 95-95-95, qual implicação para políticas de rastreamento?",
+options: ["Rastreamento apenas em sintomáticos", "Teste único aos 5 anos", "Testagem periódica em populações de risco", "Não é necessário rastrear latentes", "Rastreamento apenas após contato confirmado"],
+correctIndex: 2,
+explanation: "A latência longa reforça a necessidade de testagem periódica em grupos de risco."
+},
+{
+question: "Um paciente procurou PEP 80 horas após exposição. Qual conduta apropriada?",
+options: ["Iniciar PEP normalmente", "Não iniciar PEP, pois excedeu 72h", "Iniciar PEP com esquema modificado", "Administrar PrEP imediatamente", "Repetir teste rápido"],
+correctIndex: 1,
+explanation: "PEP não deve ser iniciada após o prazo máximo de 72 horas."
+},
+{
+question: "Em áreas de alta vulnerabilidade social, qual intervenção estrutural poderia reduzir mais efetivamente a incidência de HIV?",
+options: ["Distribuição de preservativos", "Educação em saúde nas escolas", "Redução de barreiras ao acesso a serviços de saúde", "Campanhas de mídia", "Testes de HIV em massa"],
+correctIndex: 2,
+explanation: "Melhorar o acesso aos serviços de saúde atua diretamente na prevenção e no tratamento."
+},
+{
+question: "Qual é o agente etiológico da sífilis adquirida?",
+options: ["Treponema pallidum", "Treponema denticola", "Borrelia burgdorferi", "Haemophilus ducreyi", "Spirochaeta subspecies"],
+correctIndex: 0,
+explanation: "A sífilis é causada pela espiroqueta Treponema pallidum."
+},
+{
+question: "Quais são as principais vias de transmissão da sífilis?",
+options: ["Sexual, vertical e sanguínea", "Fecal-oral e respiratória", "Cutânea direta e fecal-oral", "Respiratória e parenteral", "Oral e ocular"],
+correctIndex: 0,
+explanation: "A sífilis é transmitida principalmente por via sexual, vertical (gestação/parto) e transfusional."
+},
+{
+question: "Qual o período de incubação da sífilis adquirida?",
+options: ["10 a 90 dias (média 21 dias)", "1 a 7 dias", "3 a 6 meses", "1 a 2 anos", "5 a 14 dias"],
+correctIndex: 0,
+explanation: "O período de incubação varia de 10 a 90 dias, com média de 21 dias."
+},
+{
+question: "Em quais estágios da sífilis adquirida a transmissibilidade é mais elevada?",
+options: ["Primário e secundário", "Latente recente", "Latente tardia", "Terciário", "Subclínico"],
+correctIndex: 0,
+explanation: "A infectividade é maior nos estágios primário e secundário, quando há lesões ricas em treponemas."
+},
+{
+question: "Qual característica típica do cancro duro na sífilis primária?",
+options: ["Úlcera única, indolor e de base limpa", "Úlcera múltipla, dolorosa e purulenta", "Mácula eritematosa pruriginosa", "Vesícula tensional dolorosa", "Pústula dolorosa"],
+correctIndex: 0,
+explanation: "O cancro duro é uma úlcera única, indolor, com base limpa e bordas bem definidas."
+},
+{
+question: "Qual sinal cutâneo é clássico na sífilis secundária?",
+options: ["Pápulas palmoplantares", "Urticária generalizada", "Vesículas mucosas dolorosas", "Petéquias confluentes", "Eritema multiforme"],
+correctIndex: 0,
+explanation: "Pápulas palmoplantares e condiloma plano são achados típicos da sífilis secundária."
+},
+{
+question: "Como se define a sífilis latente tardia?",
+options: ["Ausência de sinais ou sintomas há mais de um ano", "Sintomas intermitentes após um ano", "Manifestações neurológicas tardias", "Febre recorrente por mais de um ano", "Linfonodos aumentados após um ano"],
+correctIndex: 0,
+explanation: "Sífilis latente tardia caracteriza-se pela ausência de sintomas em infecção com mais de um ano de evolução."
+},
+{
+question: "Qual é uma manifestação típica da sífilis terciária?",
+options: ["Formação de gomas sifilíticas", "Pápulas palmoplantares", "Cancro duro", "Condiloma plano", "Vesículas mucosas"],
+correctIndex: 0,
+explanation: "Gomas sifilíticas, neurossífilis e complicações cardiovasculares são típicos da sífilis terciária."
+},
+{
+question: "Qual exame permite observar diretamente o Treponema pallidum?",
+options: ["Microscopia de campo escuro", "ELISA", "PCR em tempo real", "Western blot", "Cultura em ágar"],
+correctIndex: 0,
+explanation: "Microscopia de campo escuro é o método de escolha para visualização direta do treponema."
+},
+{
+question: "Qual teste não treponêmico é utilizado no diagnóstico da sífilis?",
+options: ["VDRL", "FTA-abs", "TPHA", "PCR", "ELISA"],
+correctIndex: 0,
+explanation: "O VDRL é o teste não treponêmico mais usado para triagem da sífilis."
+},
+{
+question: "Qual teste treponêmico confirma a infecção por sífilis?",
+options: ["FTA-abs", "VDRL", "ELISA", "Western blot", "PCR"],
+correctIndex: 0,
+explanation: "O FTA-abs é um teste treponêmico confirmatório com alta especificidade."
+},
+{
+question: "Qual o esquema de tratamento recomendado para sífilis adquirida em adultos não gestantes?",
+options: ["Penicilina benzatina 2,4 MIU IM dose única", "Doxiciclina 100 mg 14 dias", "Azitromicina dose única", "Tetraciclina oral 14 dias", "Ceftriaxona IM 7 dias"],
+correctIndex: 0,
+explanation: "O tratamento de escolha para sífilis adquirida em adultos é penicilina benzatina 2,4 MIU em dose única."
+},
+{
+question: "Qual o esquema de tratamento indicado para gestantes com sífilis?",
+options: ["Penicilina benzatina 2,4 MIU IM semanal por 3 semanas", "Doxiciclina 100 mg 14 dias", "Azitromicina dose única", "Tetraciclina oral 14 dias", "Ceftriaxona IM 7 dias"],
+correctIndex: 0,
+explanation: "Gestantes devem receber penicilina benzatina 2,4 MIU IM semanal por 3 doses para prevenir transmissão fetal."
+},
+{
+question: "Quais vacinas são recomendadas como parte da estratégia de prevenção combinada em pacientes com sífilis?",
+options: ["Hepatite A e B e HPV", "Tríplice viral (SCR)", "Influenza e pneumocócica", "BCG e DTP", "Rotavírus e meningocócica"],
+correctIndex: 0,
+explanation: "A estratégia de prevenção combinada inclui vacinação contra hepatites A e B e HPV."
+},
+{
+question: "Qual via NÃO está envolvida na transmissão vertical da sífilis congênita?",
+options: ["Inalatória", "Transplacentária", "Contato com lesões no parto", "Transmissão durante a gestação", "Contato cutâneo no parto"],
+correctIndex: 0,
+explanation: "A transmissão vertical ocorre transplacentária ou por contato com lesões no parto, não por via inalatória."
+},
+{
+question: "Uma gestante com VDRL 1:64 no primeiro trimestre deve ter como conduta inicial:",
+options: ["Iniciar imediatamente penicilina benzatina", "Iniciar eritromicina", "Aguardar segundo trimestre", "Solicitar apenas exame de FTA-abs", "Prescrever tetraciclina"],
+correctIndex: 0,
+explanation: "Gestantes com sífilis reagente devem receber penicilina benzatina imediatamente para prevenir complicações fetais."
+},
+{
+question: "Por que combinamos testes não treponêmicos e treponêmicos no diagnóstico de sífilis?",
+options: ["Para aumentar sensibilidade e especificidade", "Para reduzir custos laboratoriais", "Por protocolo institucional", "Para detectar coinfecções", "Para monitorar resposta ao tratamento"],
+correctIndex: 0,
+explanation: "Testes não treponêmicos são sensíveis e treponêmicos são específicos, melhorando a acurácia diagnóstica."
+},
+{
+question: "Em uma área com aumento de casos de sífilis, a intervenção mais eficaz de saúde pública seria:",
+options: ["Notificação compulsória com investigação epidemiológica", "Testagem apenas em sintomáticos", "Distribuição de vitamina A", "Campanha contra dengue", "Monitoramento de tuberculose"],
+correctIndex: 0,
+explanation: "A notificação compulsória e investigação rápida são essenciais para controle e prevenção de surtos."
+},
+{
+question: "Como diferenciar laboratorialmente sífilis latente recente de latente tardia?",
+options: ["Pelo tempo de infecção menor ou maior que um ano", "Pelo título do VDRL em pontos de corte fixos", "Pelo resultado de FTA-abs quantitativo", "Pelo PCR em tempo real", "Pela presença de sintomas"],
+correctIndex: 0,
+explanation: "A distinção entre latente recente e tardia baseia-se no tempo de infecção (<1 ano ou >1 ano)."
+},
+{
+question: "Um recém-nascido assintomático, filho de mãe tratada corretamente, apresenta VDRL reativo de baixo título. O próximo passo é:",
+options: ["Aguardar reavaliação clínica e laboratorial periódica", "Iniciar esquema completo de penicilina imediatamente", "Descartar sífilis congênita sem acompanhamento", "Prescrever antivirais profiláticos", "Solicitar biópsia de lesões"],
+correctIndex: 0,
+explanation: "Recém-nascidos assintomáticos de mãe tratada devem ser acompanhados, aguardando queda espontânea dos títulos."
+},
+{
+question: "O que caracteriza a COVID-19?",
+options: ["Uma infecção respiratória aguda causada pelo vírus Influenza", "Uma infecção respiratória aguda causada pelo coronavírus SARS-CoV-2", "Uma doença de pele causada por poxvírus", "Uma infecção gastrointestinal causada por adenovírus", "Uma doença neurológica causada por arbovírus"],
+correctIndex: 1,
+explanation: "A COVID-19 é definida como infecção respiratória aguda causada pelo coronavírus SARS-CoV-2."
+},
+{
+question: "Qual é o agente etiológico da COVID-19?",
+options: ["SARS-CoV", "MERS-CoV", "SARS-CoV-2", "Influenza A", "Adenovírus"],
+correctIndex: 2,
+explanation: "O agente etiológico da COVID-19 é o SARS-CoV-2."
+},
+{
+question: "SARS-CoV-2 pertence a qual gênero de coronavírus?",
+options: ["Alphacoronavírus", "Betacoronavírus", "Gammacoronavírus", "Deltacoronavírus", "Nidovírus"],
+correctIndex: 1,
+explanation: "O SARS-CoV-2 é classificado como um betacoronavírus."
+},
+{
+question: "Até o momento, qual é o reservatório definitivo do SARS-CoV-2?",
+options: ["Morcegos", "Camelos", "Gatos", "Não identificado", "Ser humano"],
+correctIndex: 3,
+explanation: "Até o momento, o reservatório definitivo do SARS-CoV-2 não foi identificado."
+},
+{
+question: "Quais são as principais formas de transmissão do SARS-CoV-2?",
+options: ["Contato, gotículas e aerossóis", "Transfusão sanguínea e via fecal-oral", "Vetores artrópodes e água", "Alimentos contaminados e contato cutâneo", "Transmissão vertical exclusiva"],
+correctIndex: 0,
+explanation: "O SARS-CoV-2 é transmitido principalmente por contato, gotículas e aerossóis."
+},
+{
+question: "Qual é o período de incubação da COVID-19?",
+options: ["1 a 3 dias", "1 a 14 dias", "2 a 21 dias", "7 a 28 dias", "14 a 60 dias"],
+correctIndex: 1,
+explanation: "O período de incubação varia de 1 a 14 dias."
+},
+{
+question: "Qual é a mediana do período de incubação da COVID-19?",
+options: ["2 a 3 dias", "3 a 4 dias", "5 a 6 dias", "7 a 8 dias", "10 a 12 dias"],
+correctIndex: 2,
+explanation: "A mediana do período de incubação é de 5 a 6 dias."
+},
+{
+question: "Qual percentual de infectados desenvolve anticorpos neutralizantes entre 2 e 4 semanas pós-infecção?",
+options: ["50–60%", "60–70%", "70–80%", "80–90%", "90–99%"],
+correctIndex: 4,
+explanation: "Estudos mostram que de 90 a 99% dos infectados desenvolvem anticorpos neutralizantes nesse período."
+},
+{
+question: "Indivíduos com infecção leve ou assintomática de COVID-19 tendem a apresentar:",
+options: ["Níveis elevados de anticorpos estáveis ao longo do tempo", "Níveis mais baixos de anticorpos que podem cair meses depois", "Resposta celular exagerada e inflamação crônica", "Proteção vitalícia após infecção", "Ausência total de anticorpos"],
+correctIndex: 1,
+explanation: "Indivíduos com infecção leve ou assintomática tendem a ter níveis mais baixos de anticorpos, que podem diminuir meses após a infecção."
+},
+{
+question: "A maioria das transmissões de COVID-19 ocorre de:",
+options: ["Assintomáticos para outros", "Sintomáticos para outros", "Transmissão de animais para humanos", "Transmissão fecal-oral", "Transmissão cruzada via superfícies"],
+correctIndex: 1,
+explanation: "A maioria das transmissões ocorre de sintomáticos para outros."
+},
+{
+question: "Pacientes com COVID-19 podem transmitir o vírus até quantas horas antes do início dos sintomas?",
+options: ["24 horas", "48 horas", "72 horas", "96 horas", "120 horas"],
+correctIndex: 1,
+explanation: "Pacientes podem transmitir o vírus até 48 horas antes do início dos sintomas."
+},
+{
+question: "Portadores assintomáticos transmitem o SARS-CoV-2 em comparação a pré-sintomáticos e sintomáticos:",
+options: ["Na mesma probabilidade", "Em maior probabilidade", "Em menor probabilidade", "Somente após 7 dias de infecção", "Não transmitem"],
+correctIndex: 2,
+explanation: "Portadores assintomáticos transmitem em menor probabilidade que pré-sintomáticos e sintomáticos."
+},
+{
+question: "Em que ano a OMS declarou o fim da emergência de Saúde Pública para COVID-19?",
+options: ["2020", "2021", "2022", "2023", "2024"],
+correctIndex: 3,
+explanation: "A OMS declarou o fim da emergência de Saúde Pública em 2023."
+},
+{
+question: "Qual dos seguintes NÃO é considerado fator de risco para COVID-19 grave segundo o slide?",
+options: ["Idade ≥ 60 anos", "Obesidade", "Doença renal crônica estágio 3–5", "Cálculos renais", "Diabetes tipo 2"],
+correctIndex: 3,
+explanation: "Cálculos renais não foram listados como fator de risco para COVID-19 grave."
+},
+{
+question: "Qual manifestação clínica está associada ao quadro leve de COVID-19?",
+options: ["Dispneia e saturação < 95%", "Tosse, dor de garganta e coriza", "Sepse e choque séptico", "Insuficiência respiratória grave", "Falência múltipla de órgãos"],
+correctIndex: 1,
+explanation: "No quadro leve há tosse, dor de garganta e coriza, entre outros sintomas leves."
+},
+{
+question: "Qual das seguintes caracteriza o quadro moderado de COVID-19?",
+options: ["Teste positivo sem sintomas", "Pneumonia sem gravidade com febre diária", "Sepse e choque séptico", "Dispneia intensa e cianose", "Falência múltipla de órgãos"],
+correctIndex: 1,
+explanation: "O quadro moderado inclui pneumonia sem gravidade e febre diária."
+},
+{
+question: "Em qual categoria clínica de COVID-19 encontram-se dispneia e saturação de O₂ < 95%?",
+options: ["Assintomático", "Leve", "Moderado", "Grave", "Crítico"],
+correctIndex: 3,
+explanation: "Dispneia e saturação < 95% caracterizam o quadro grave."
+},
+{
+question: "Qual categoria clínica de COVID-19 inclui sepse, choque séptico e SDRA?",
+options: ["Assintomático", "Leve", "Moderado", "Grave", "Crítico"],
+correctIndex: 4,
+explanation: "Sepse, choque séptico e SDRA são características do quadro crítico."
+},
+{
+question: "Qual método laboratorial molecular é considerado padrão para diagnóstico de COVID-19?",
+options: ["ELISA", "RT-qPCR", "Testes rápidos de antígeno", "Sorologia IgG", "Tomografia computadorizada"],
+correctIndex: 1,
+explanation: "O RT-qPCR é o método molecular padrão para diagnóstico."
+},
+{
+question: "Quais isotipos podem ser detectados em exames de sorologia para COVID-19?",
+options: ["IgM e IgA exclusivamente", "IgG exclusivamente", "IgM, IgA e/ou IgG", "IgE e IgD", "IgA e IgE"],
+correctIndex: 2,
+explanation: "Podem ser detectados IgM, IgA e/ou IgG em exames de sorologia."
+},
+{
+question: "Qual exame de imagem de alta resolução é utilizado no diagnóstico de COVID-19?",
+options: ["Radiografia de tórax", "Tomografia computadorizada de alta resolução", "Ultrassonografia abdominal", "Ressonância magnética cerebral", "Ecocardiograma"],
+correctIndex: 1,
+explanation: "A tomografia computadorizada de alta resolução é usada no diagnóstico."
+},
+{
+question: "Que tipo de vacina é a Sinovac (CoronaVac)?",
+options: ["Vacina de mRNA", "Vacina de vetor viral", "Vacina de vírus inativado", "Vacina de subunidade proteica", "Vacina de DNA recombinante"],
+correctIndex: 2,
+explanation: "A Sinovac utiliza vírus inativado."
+},
+{
+question: "Qual é a dose e via de administração da vacina Sinovac?",
+options: ["0,3 mL IM", "0,5 mL IM", "0,5 mL subcutânea", "1,0 mL IV", "0,2 mL intranasal"],
+correctIndex: 1,
+explanation: "A vacina Sinovac é administrada IM em dose de 0,5 mL."
+},
+{
+question: "Um paciente imunocomprometido de 8 meses de idade deve receber qual vacina contra COVID-19 disponível segundo o slide e por quê?",
+options: ["Sinovac", "Pfizer/BioNTech (Comirnaty)", "Janssen", "Moderna (bivalente JN.1)", "Serum/Zalika"],
+correctIndex: 3,
+explanation: "A vacina Moderna bivalente JN.1 é indicada a partir de 6 meses e para imunocomprometidos."
+},
+{
+question: "Em uma área remota sem capacidade de armazenamento a −60 °C, qual vacina seria mais apropriada logisticamente e por quê?",
+options: ["Pfizer/BioNTech (Comirnaty)", "Moderna (bivalente JN.1)", "Sinovac", "Janssen", "Serum/Zalika"],
+correctIndex: 3,
+explanation: "A Janssen é dose única e pode ser armazenada entre 2–8 °C, facilitando a logística sem freezer ultracongelador."
+},
+{
+question: "Uma gestante deseja vacinar-se contra a COVID-19; com base nas contraindicações listadas, qual vacina é mais indicada e por quê?",
+options: ["Sinovac", "Pfizer/BioNTech (Comirnaty)", "Moderna (bivalente JN.1)", "Janssen", "Serum/Zalika"],
+correctIndex: 0,
+explanation: "A Sinovac não contraindica gestantes, ao contrário da Comirnaty."
+},
+{
+question: "Um adolescente de 14 anos apresentou reação à vacina de vírus inativado; qual vacina contra COVID-19 disponível seria recomendada para ele e por quê?",
+options: ["Sinovac", "Pfizer Adolescente/Adultos", "Janssen", "Moderna (bivalente JN.1)", "Serum/Zalika"],
+correctIndex: 1,
+explanation: "A vacina Pfizer Adolescente/Adultos é indicada para ≥12 anos e não é de vírus inativado."
+},
+{
+question: "Entre as vacinas listadas, qual permite o intervalo mínimo de 2 semanas entre doses, e por quê?",
+options: ["Sinovac", "Pfizer/BioNTech (Comirnaty)", "Janssen", "Moderna (bivalente JN.1)", "Serum/Zalika"],
+correctIndex: 0,
+explanation: "O esquema da Sinovac permite intervalo de 2 a 4 semanas entre doses."
+},
+{
+question: "Qual vacina listada permite maior tempo em temperatura ambiente após retirada da refrigeração e por quê?",
+options: ["Sinovac", "Pfizer/BioNTech (Comirnaty)", "Janssen", "Moderna (bivalente JN.1)", "Serum/Zalika"],
+correctIndex: 4,
+explanation: "A Serum/Zalika é válida por 12 horas em temperatura ambiente após abertura do frasco."
+},
+{
+question: "Um paciente teve exposição suspeita há 3 dias sem sintomas; qual teste de diagnóstico seria mais indicado nesse momento e por quê?",
+options: ["Testes rápidos de anticorpo (IgG/IgM)", "Sorologia (ELISA)", "RT-qPCR", "Radiografia de tórax", "Tomografia computadorizada"],
+correctIndex: 2,
+explanation: "RT-qPCR detecta RNA viral precocemente, antes da soroconversão."
+},
+{
+question: "Como se define violência intrafamiliar?",
+options: ["Qualquer abuso no contexto privado da família", "Qualquer abuso no local de trabalho", "Apenas violência física entre cônjuges", "Violência com impacto econômico apenas", "Abuso apenas contra crianças"],
+correctIndex: 0,
+explanation: "Violência intrafamiliar é qualquer tipo de abuso praticado no contexto privado da família."
+},
+{
+question: "Quais grupos são especialmente atingidos pela violência intrafamiliar?",
+options: ["Somente mulheres", "Mulheres, crianças, adolescentes, idosos e pessoas com deficiência", "Apenas crianças e adolescentes", "Somente idosos", "Apenas portadores de deficiência"],
+correctIndex: 1,
+explanation: "Violência intrafamiliar afeta com mais frequência mulheres, crianças, adolescentes, idosos e pessoas com deficiência."
+},
+{
+question: "Segundo estudos no Reino Unido, qual a estimativa anual de casos de abuso contra idosos?",
+options: ["100–200 mil", "1 a 2 milhões", "5 a 10 milhões", "500–800 mil", "2 a 4 milhões"],
+correctIndex: 1,
+explanation: "Estudos ingleses estimam 1 a 2 milhões de casos de abuso contra idosos por ano."
+},
+{
+question: "Qual a taxa estimada de denúncias de abuso contra idosos?",
+options: ["1 em 2 casos", "1 em 5 casos", "1 em 10 casos", "1 em 14 casos", "1 em 20 casos"],
+correctIndex: 3,
+explanation: "Acredita-se que apenas 1 caso em cada 14 seja denunciado."
+},
+{
+question: "Quais percentuais correspondem à prevalência de abuso físico, financeiro e emocional contra idosos?",
+options: ["45%, 26% e 20%", "20%, 45% e 26%", "26%, 20% e 45%", "50%, 30% e 20%", "30%, 20% e 10%"],
+correctIndex: 0,
+explanation: "A prevalência estimada é de 45% de abuso físico, 26% financeiro e 20% emocional."
+},
+{
+question: "Quem é o autor mais frequente de abusos físicos e/ou sexuais contra mulheres e meninas?",
+options: ["Filhos", "Mães", "Homens adultos", "Irmãos", "Anciãos"],
+correctIndex: 2,
+explanation: "Homens adultos são apontados como perpetradores mais frequentes nesses casos."
+},
+{
+question: "Quem comete, com frequência, abuso físico e negligência contra crianças?",
+options: ["Professores", "Mães", "Irmãos", "Tios", "Babás"],
+correctIndex: 1,
+explanation: "O abuso físico e negligência às crianças são muitas vezes cometidos pelas mães."
+},
+{
+question: "Como se caracteriza a violência física?",
+options: ["Uso de força para causar dano não acidental", "Ações que prejudicam apenas a autoestima", "Constrangimento sem uso da força", "Negação de recursos financeiros", "Exposição a pornografia"],
+correctIndex: 0,
+explanation: "Violência física envolve uso da força que causa ou tenta causar dano não acidental."
+},
+{
+question: "O que define violência psicológica?",
+options: ["Uso de força física", "Ações que ferem a autoestima e identidade, como humilhações e ameaças", "Imposição de atos sexuais", "Roubo de bens", "Privação alimentar"],
+correctIndex: 1,
+explanation: "Violência psicológica inclui humilhações, ameaças e isolamento que afetam a saúde mental."
+},
+{
+question: "Como se configura a violência sexual intrafamiliar?",
+options: ["Negar liberdade econômica", "Forçar ato sexual ou expor a interações sexuais sem consentimento", "Isolar emocionalmente a vítima", "Empregar violência física leve", "Impor dieta restrita"],
+correctIndex: 1,
+explanation: "Violência sexual é coagir outra pessoa ao ato sexual contra sua vontade."
+},
+{
+question: "O que caracteriza a violência econômica?",
+options: ["Ações que ferem a autoestima", "Uso da força física", "Destruição ou apropriação de bens essenciais", "Constrangimento verbal", "Exposição a conteúdos pornográficos"],
+correctIndex: 2,
+explanation: "Violência econômica envolve atos que prejudicam a sobrevivência, como roubo ou destruição de bens."
+},
+{
+question: "Qual destes atos exemplifica violência física intrafamiliar?",
+options: ["Humilhações verbais", "Roubo de bens", "Tapas e socos", "Isolamento social", "Negar acesso à escola"],
+correctIndex: 2,
+explanation: "Tapas e socos são exemplos clássicos de violência física."
+},
+{
+question: "O que caracteriza estupro no âmbito da violência intrafamiliar?",
+options: ["Carícias não desejadas", "Penetração forçada sob ameaça ou sem consentimento", "Comentários depreciativos", "Isolamento econômico", "Humilhação pública"],
+correctIndex: 1,
+explanation: "Estupro é ato de penetração forçada com uso de força ou ameaça."
+},
+{
+question: "Como se define abuso sexual na infância?",
+options: ["Contato sexual consensual entre iguais", "Atividade sexual inapropriada com criança incapaz de consentir", "Negação de recursos financeiros", "Ofender psicologicamente", "Isolamento físico"],
+correctIndex: 1,
+explanation: "Abuso sexual infantil envolve atividades sexuais às quais a criança não pode consentir."
+},
+{
+question: "Qual a definição de abuso incestuoso?",
+options: ["Assédio no trabalho", "Abuso sexual envolvendo parentes próximos com relação de poder", "Violência econômica entre cônjuges", "Negligência de idosos por parentes distantes", "Humilhação pública"],
+correctIndex: 1,
+explanation: "Incesto envolve abuso sexual por pessoa em posição de poder na família."
+},
+{
+question: "O que configura assédio sexual?",
+options: ["Penetração forçada", "Ações de conotação sexual que constrangem via abuso de poder", "Negligência financeira", "Insultos genéricos", "Agressão física leve"],
+correctIndex: 1,
+explanation: "Assédio sexual é uso de poder para constranger com conotação sexual."
+},
+{
+question: "Como se define violência institucional?",
+options: ["Abuso entre familiares", "Violência nos serviços públicos por ação ou omissão", "Briga entre vizinhos", "Violência em locais de trabalho privados", "Conflito entre colegas"],
+correctIndex: 1,
+explanation: "Violência institucional ocorre por ação ou omissão de serviços públicos contra usuários."
+},
+{
+question: "Qual destas é manifestação de violência institucional no atendimento?",
+options: ["Tapas dados por socorristas", "Falta de escuta e peregrinação entre serviços", "Roubo de pertences em casa", "Humilhação por familiares", "Coerção sexual em consultório"],
+correctIndex: 1,
+explanation: "Peregrinação e falta de tempo de escuta caracterizam violência institucional."
+},
+{
+question: "Qual exemplo caracteriza violação de direitos institucionais?",
+options: ["Prescrição adequada de medicamentos", "Proibição de acompanhantes durante atendimento", "Encaminhamento a especialistas", "Uso de prontuário eletrônico", "Fornecimento de laudos"],
+correctIndex: 1,
+explanation: "Proibir acompanhante é violar direitos reprodutivos e de suporte emocional."
+},
+{
+question: "Qual prática inadequada institucional constitui violência?",
+options: ["Descrição clara do procedimento", "Garantia de tempo de consulta", "Diagnóstico impreciso e prescrição inapropriada", "Oferta de suporte psicológico", "Encaminhamento a rede de apoio"],
+correctIndex: 2,
+explanation: "Diagnósticos imprecisos com medicação inadequada são formas de violência institucional."
+},
+{
+question: "Qual fator de risco é específico para crianças na violência intrafamiliar?",
+options: ["Dificuldade de locomoção", "Dependência financeira", "Filho não desejado", "Uso de substâncias", "Hiperidrose"],
+correctIndex: 2,
+explanation: "Filho não desejado é fator de risco para violência infantil."
+},
+{
+question: "Qual fator de risco específico para idosos aumenta vulnerabilidade?",
+options: ["Hiperatividade", "Deficiência auditiva", "Dificuldade de locomoção", "Frequência escolar alta", "Atividades esportivas"],
+correctIndex: 2,
+explanation: "Dificuldade de locomoção e necessidade de cuidados intensivos aumentam o risco."
+},
+{
+question: "Qual fator de risco é típico de pessoas com deficiência?",
+options: ["Maior autonomia", "Reduzida autonomia", "Alta rede de suporte", "Frequente isolamento voluntário", "Boa mobilidade"],
+correctIndex: 1,
+explanation: "Redução de autonomia aumenta a vulnerabilidade de pessoas com deficiência."
+},
+{
+question: "Qual fator de risco específico para mulheres está associado à violência familiar?",
+options: ["Alto nível educacional", "Dependência econômica/emocional", "Boas condições de moradia", "Ausência de histórico familiar", "Rede social ampla"],
+correctIndex: 1,
+explanation: "Dependência econômica e histórico de violência na família aumentam a vulnerabilidade."
+},
+{
+question: "Qual sinal físico pode indicar violência contra crianças?",
+options: ["Eritema solar leve", "Fraturas múltiplas em diferentes estágios de cicatrização", "Manchas de nascença", "Cicatriz cirúrgica bem explicada", "Rash alérgico"],
+correctIndex: 1,
+explanation: "Fraturas em diferentes estágios podem sugerir abuso físico."
+},
+{
+question: "Qual sinal psicológico é indicativo de violência infantil?",
+options: ["Alegria excessiva", "Transtornos do sono e isolamento", "Desempenho escolar excelente", "Apetite normal", "Sociabilidade intensa"],
+correctIndex: 1,
+explanation: "Transtornos do sono, isolamento e comportamento agressivo são sinais de abuso."
+},
+{
+question: "No diagnóstico de violência infantil, o questionamento crítico inclui:",
+options: ["Verificar se a lesão corresponde ao relato", "Aplicar apenas exame de imagem", "Ignorar o histórico familiar", "Focar só em sintomas físicos", "Prescrever medicação sem investigação"],
+correctIndex: 0,
+explanation: "É essencial avaliar se a lesão é coerente com a história relatada."
+},
+{
+question: "Qual princípio ético exige confidencialidade no atendimento de vítimas?",
+options: ["Não causar dano", "Sigilo e segurança", "Autocuidado profissional", "Respeitar o tempo", "Mobilização da rede"],
+correctIndex: 1,
+explanation: "Garantir sigilo e proteção física da vítima é princípio fundamental."
+},
+{
+question: "Qual medida de urgência é recomendada nas primeiras 72 horas após estupro?",
+options: ["Profilaxia para ISTs e HIV", "Isolamento domiciliar", "Exercício físico intenso", "Dieta restrita", "Terapia de grupo imediata"],
+correctIndex: 0,
+explanation: "Profilaxia de ISTs e HIV deve ser iniciada nas primeiras 72 horas."
+},
+{
+question: "Qual serviço oferece atendimento 24h pelo telefone 188 para prevenção do suicídio?",
+options: ["UBS", "CAPS", "CVV", "SAMU", "NASF"],
+correctIndex: 2,
+explanation: "O Centro de Valorização da Vida (CVV) atende 24h pelo 188."
+},
+{
+question: "Uma mulher relata promessas de mudança do agressor após episódio de violência. Em qual fase do ciclo ela se encontra?",
+options: ["Aumento da tensão", "Incidente agudo", "Lua-de-mel", "Recomeço do ciclo", "Negação da violência"],
+correctIndex: 2,
+explanation: "A fase de lua-de-mel ocorre após o incidente, com arrependimento do agressor."
+},
+{
+question: "Um idoso apresenta escoriações inexplicáveis e cuidador evita responder. Qual ação imediata adotar?",
+options: ["Prescrever analgésicos", "Observar sem agir", "Notificar autoridades e acionar rede de proteção", "Transferir idoso sem investigação", "Encaminhar a fisioterapia"],
+correctIndex: 2,
+explanation: "É obrigatório notificar e acionar a rede de proteção em casos suspeitos."
+},
+{
+question: "Na adolescência, fantasias de poder reduzem percepção de risco. Qual intervenção preventiva é mais apropriada?",
+options: ["Educação sobre autocuidado e riscos", "Restrição total de atividades", "Isolamento social", "Proibição de internet", "Uso de medicação preventiva"],
+correctIndex: 0,
+explanation: "Educar sobre autocuidado e riscos é estratégia de prevenção eficaz."
+},
+{
+question: "Diante de suspeita de LGBTIfobia institucional, qual notificação deve ser seguida?",
+options: ["Secretaria de Educação", "SINAN e coordenadoria de diversidade local", "Rede social institucional", "Abandono do atendimento", "Registro apenas no prontuário"],
+correctIndex: 1,
+explanation: "Casos de LGBTIfobia devem ser notificados no SINAN e comunicados à coordenação de diversidade."
+},
+{
+question: "Vítima de estupro chega 80 horas após o ocorrido. Qual medida NÃO é indicada?",
+options: ["Anticoncepção de emergência", "Profilaxia de ISTs", "Profilaxia HIV", "Imunoprofilaxia Hepatite B", "Coleta de vestígios forenses"],
+correctIndex: 4,
+explanation: "Coleta de vestígios tem eficácia limitada após 72 horas."
+},
+{
+question: "Em atendimento a casal com agressor presente, qual abordagem inicial?",
+options: ["Ouvir ambos juntos", "Ouvir apenas o agressor", "Ouvir separadamente homem e mulher", "Notificar agressor imediatamente", "Encaminhamento coletivo"],
+correctIndex: 2,
+explanation: "Escutar separadamente reduz influência do agressor sobre o relato."
+},
+{
+question: "Ao construir redes de apoio na prevenção, quantos níveis de prevenção são indicados?",
+options: ["1 nível", "2 níveis", "3 níveis", "5 níveis", "10 níveis"],
+correctIndex: 2,
+explanation: "São três níveis de prevenção na rede de apoio."
+},
+{
+question: "Diante de sinais de risco de suicídio como isolamento e comentários sobre morte, qual conduta?",
+options: ["Monitorar sem intervenção", "Encerrar consulta", "Avaliar risco com instrumento validado e encaminhar", "Prescrever sem avaliação", "Notificar conselho de classe"],
+correctIndex: 2,
+explanation: "Avaliar sistematicamente e encaminhar para serviço especializado é essencial."
+},
+{
+question: "Qual estratégia estrutural é mais eficaz para reduzir violência intrafamiliar?",
+options: ["Panfletos informativos", "Melhorar acesso a serviços de saúde e assistência social", "Encerrar serviços comunitários", "Proibir visitas domiciliares", "Campanhas de rádio isoladas"],
+correctIndex: 1,
+explanation: "Ampliar acesso a serviços integra prevenção e intervenção."
+},
+{
+question: "Para evitar revitimização, o profissional deve:",
+options: ["Divulgar caso para colegas", "Expor nome da vítima publicamente", "Garantir sigilo e comunicação empática", "Não registrar no prontuário", "Subestimar relato"],
+correctIndex: 2,
+explanation: "Sigilo e comunicação clara e empática protegem a vítima de revitimização."
+},
+{
+question: "Quantas pessoas foram diagnosticadas com o vírus da hepatite B entre 2000 e 2021?",
+options: ["264.640", "279.872", "300.000", "200.000", "150.000"],
+correctIndex: 0,
+explanation: "O texto informa que 264.640 pessoas foram diagnosticadas com HBV nesse período."
+},
+{
+question: "Qual das seguintes condições NÃO está listada como principal consequência das hepatites B e C no texto?",
+options: ["Doença hepática crônica", "Cirrose hepática", "Carcinoma hepatocelular", "Esteatose hepática", "Disfunção renal"],
+correctIndex: 3,
+explanation: "O texto cita doença hepática crônica, cirrose e carcinoma hepatocelular como principais consequências, não esteatose hepática."
+},
+{
+question: "Qual dos seguintes vírus NÃO é listado como agente etiológico de hepatite viral no texto?",
+options: ["Adenovírus", "HAV", "HBV", "HCV", "HEV"],
+correctIndex: 0,
+explanation: "Adenovírus não consta na lista de agentes etiológicos apresentada."
+},
+{
+question: "Além do ser humano, quais animais são reservatórios do vírus da hepatite E de acordo com o texto?",
+options: ["Suínos", "Roedores", "Aves", "Suínos e roedores", "Suínos, roedores e aves"],
+correctIndex: 4,
+explanation: "O texto indica que suínos, roedores e aves são reservatórios do HEV."
+},
+{
+question: "Quais sintomas são característicos da fase prodrômica da hepatite aguda?",
+options: ["Anorexia, náuseas e fotofobia", "Icterícia e colúria", "Dor articular crônica", "Assintomática", "Somente diarreia"],
+correctIndex: 0,
+explanation: "A fase prodrômica inclui anorexia, náuseas, vômitos e fotofobia, entre outros sintomas inespecíficos."
+},
+{
+question: "Assinale a característica da fase ictérica da hepatite aguda descrita no texto.",
+options: ["Aumento dos sintomas prodrômicos", "Hepatomegalia dolorosa", "Início de sintomas prodrômicos", "Presença de exantema", "Sintomas inespecíficos"],
+correctIndex: 1,
+explanation: "A fase ictérica se caracteriza por hepatomegalia dolorosa e diminuição dos sintomas prodrômicos."
+},
+{
+question: "Por quanto tempo a fraqueza e o cansaço podem persistir na fase de convalescença da hepatite aguda?",
+options: ["Dias", "Semanas", "Meses", "Anos", "Horas"],
+correctIndex: 2,
+explanation: "O texto cita que fraqueza e cansaço podem persistir por meses durante a convalescença."
+},
+{
+question: "Qual é a letalidade aproximada da hepatite fulminante segundo o texto?",
+options: ["10–20%", "40–80%", "90–100%", "5–10%", "20–30%"],
+correctIndex: 1,
+explanation: "A hepatite fulminante apresenta alta letalidade, estimada em 40–80%."
+},
+{
+question: "Qual critério define hepatite crônica conforme o texto?",
+options: ["Presença de sintomas por 3 meses", "Detecção de material genético ou antígenos virais por ≥6 meses", "Icterícia persistente por 1 mês", "Aparecimento de cirrose", "Detecção de anticorpos por 2 semanas"],
+correctIndex: 1,
+explanation: "Hepatite crônica é definida pela detecção de material genético ou antígenos virais por pelo menos 6 meses."
+},
+{
+question: "O diagnóstico etiológico de hepatite viral NÃO pode ser feito apenas por sinais clínicos, exceto em surtos de qual hepatite?",
+options: ["Hepatite A", "Hepatite B", "Hepatite C", "Hepatite D", "Hepatite E"],
+correctIndex: 0,
+explanation: "O texto menciona que somente surtos de hepatite A permitem diagnóstico etiológico apenas por sinais clínicos."
+},
+{
+question: "Qual é o esquema vacinal para hepatite A indicado no texto?",
+options: ["1 dose única aos 6 meses", "2 doses com intervalo de 6 meses aos 12 e 18 meses", "3 doses aos 2, 4 e 6 meses", "Doses anuais por 3 anos", "Dose única ao nascer"],
+correctIndex: 1,
+explanation: "O texto recomenda duas doses da vacina contra hepatite A aos 12 e 18 meses, com intervalo de 6 meses."
+},
+{
+question: "Qual profilaxia pós-exposição para hepatite A é recomendada no texto?",
+options: ["Vacinação universal", "Imunoglobulina em grupos de risco", "Antivirais orais", "Corticoides", "Não há profilaxia"],
+correctIndex: 1,
+explanation: "O texto preconiza o uso de imunoglobulina em grupos de risco após exposição ao HAV."
+},
+{
+question: "Qual marcador sorológico é indicativo de hepatite A aguda?",
+options: ["Anti-HAV IgM", "Anti-HAV IgG", "Anti-HAV total", "HAV-RNA", "Anti-HBs"],
+correctIndex: 0,
+explanation: "Anti-HAV IgM é utilizado para diagnóstico de hepatite A aguda."
+},
+{
+question: "Qual marcador sorológico indica imunidade duradoura contra hepatite A?",
+options: ["Anti-HAV IgM", "Anti-HAV IgG", "HBsAg", "Anti-HCV", "HCV-RNA"],
+correctIndex: 1,
+explanation: "Anti-HAV IgG reflete fase de convalescença e imunidade duradoura."
+},
+{
+question: "Qual teste detecta o genoma viral da hepatite A?",
+options: ["Anti-HAV total", "Anti-HAV IgG", "Anti-HAV IgM", "HAV-RNA", "Anti-HBs"],
+correctIndex: 3,
+explanation: "HAV-RNA identifica diretamente o genoma viral da hepatite A."
+},
+{
+question: "Qual marcador sorológico sugere infecção aguda por hepatite B?",
+options: ["HBsAg", "Anti-HBc IgM", "Anti-HBs", "HBeAg", "Anti-HBc IgG"],
+correctIndex: 1,
+explanation: "Anti-HBc IgM é marcador de infecção aguda por HBV."
+},
+{
+question: "Qual marcador sorológico indica imunidade adquirida por vacinação contra hepatite B?",
+options: ["HBsAg", "Anti-HBc IgM", "Anti-HBc IgG", "Anti-HBs", "HBeAg"],
+correctIndex: 3,
+explanation: "Anti-HBs positivo demonstra imunidade pós-vacinação ou infecção passada."
+},
+{
+question: "Qual marcador reflete replicação viral ativa na infecção por hepatite B?",
+options: ["Anti-HBs", "Anti-HBc IgG", "HBeAg", "Anti-HBe", "HBsAg"],
+correctIndex: 2,
+explanation: "HBeAg indica replicação ativa do HBV e alta carga viral."
+},
+{
+question: "Qual é o esquema vacinal da hepatite B no calendário infantil conforme o texto?",
+options: ["Ao nascer, 2, 4 e 6 meses", "12 e 18 meses", "2 doses somente", "Dose única aos 6 meses", "Anual"],
+correctIndex: 0,
+explanation: "O texto descreve o esquema de 4 doses: ao nascer, 2, 4 e 6 meses."
+},
+{
+question: "Qual hepatite viral requer a presença do vírus B para replicação?",
+options: ["Hepatite A", "Hepatite C", "Hepatite D", "Hepatite E", "Hepatite autoimune"],
+correctIndex: 2,
+explanation: "O vírus da hepatite D necessita do HBV para replicar."
+},
+{
+question: "Quanto tempo após a infecção o HCV-RNA pode ser detectado, segundo o texto?",
+options: ["1–2 dias", "1–2 semanas", "1–2 meses", "3–6 meses", "Imediatamente"],
+correctIndex: 1,
+explanation: "O texto informa que o HCV-RNA é detectável de 1 a 2 semanas após a infecção."
+},
+{
+question: "Um paciente de 12 meses recebeu a primeira dose da vacina contra hepatite A. Em quantos meses ele deve receber a segunda dose de acordo com o esquema do texto?",
+options: ["3", "6", "12", "18", "24"],
+correctIndex: 1,
+explanation: "O esquema vacinal prevê intervalo de 6 meses entre as doses aos 12 e 18 meses."
+},
+{
+question: "Em recém-nascido de mãe HBsAg positiva, qual a conduta de profilaxia neonatal recomendada pelo texto?",
+options: ["Vacina contra HBV apenas", "Vacina + imunoglobulina", "Imunoglobulina apenas", "Tenofovir ao nascer", "Aguardar 1 mês para vacinar"],
+correctIndex: 1,
+explanation: "O texto recomenda vacina para HBV e imunoglobulina simultaneamente no recém-nascido de mãe HBsAg+."
+},
+{
+question: "Considerando o perfil sorológico HBsAg+, Anti-HBc IgM+, Anti-HBs- e HBeAg-, qual estágio de infecção por HBV esse paciente apresenta?",
+options: ["Infecção aguda", "Infecção crônica inativa", "Imunidade pós-vacinal", "Recuperação (cura)", "Portador crônico ativo"],
+correctIndex: 0,
+explanation: "A presença de Anti-HBc IgM e HBsAg indica infecção aguda por HBV."
+},
+{
+question: "Um paciente apresenta Anti-HCV positivo e HCV-RNA detectável há 8 meses. Qual o diagnóstico mais provável segundo os critérios do texto?",
+options: ["Infecção aguda", "Ausência de exposição", "Infecção crônica", "Falso positivo", "Imunidade natural"],
+correctIndex: 2,
+explanation: "HCV-RNA detectável por mais de 6 meses caracteriza infecção crônica."
+},
+{
+question: "Para monitorar a resposta ao tratamento da hepatite C, qual marcador sorológico é mais adequado?",
+options: ["Anti-HCV", "HCV-RNA", "Anti-HAV IgG", "HBsAg", "Anti-HBs"],
+correctIndex: 1,
+explanation: "HCV-RNA é utilizado para avaliar resposta virológica ao tratamento."
+},
+{
+question: "Qual fase da hepatite aguda explicaria fadiga persistente por meses mesmo após o desaparecimento da icterícia?",
+options: ["Fase prodrômica", "Fase ictérica", "Fase de convalescença", "Forma fulminante", "Fase crônica"],
+correctIndex: 2,
+explanation: "A convalescença é caracterizada por recuperação gradual com fadiga que pode durar meses."
+},
+{
+question: "Se um paciente desenvolve encefalopatia e coagulopatia em até 8 semanas, qual forma de hepatite descrita no texto ele provavelmente tem?",
+options: ["Hepatite aguda prodrômica", "Hepatite aguda ictérica", "Hepatite fulminante", "Hepatite crônica", "Hepatite autoimune"],
+correctIndex: 2,
+explanation: "Forma fulminante ocorre em até 8 semanas e inclui encefalopatia e coagulopatia."
+},
+{
+question: "Em áreas endêmicas de HDV, qual exame adicional deve ser solicitado em pacientes HBsAg positivos?",
+options: ["HBeAg", "Anti-HCV", "Anti-HDV e HDV-RNA", "Anti-HAV", "Anti-HEV"],
+correctIndex: 2,
+explanation: "O diagnóstico de HDV requer pesquisa de anti-HDV e HDV-RNA em pacientes HBsAg+."
+},
+{
+question: "Ao planejar campanha de vacinação contra hepatite B, em que momento deve ser aplicada a primeira dose segundo o texto?",
+options: ["Ao nascer", "Aos 2 meses", "Aos 4 meses", "Aos 6 meses", "Aos 12 meses"],
+correctIndex: 0,
+explanation: "O esquema vacinal para HBV inclui primeira dose ao nascer."
+}
+  ];
+  
+// === ADMINISTRAÇÃO DO QUIZ COM PERSISTÊNCIA ===
+
+  // VAR globais
+  let currentQuestionIndex = 0, 
+      score = 0, 
+      userAnswers = [], 
+      seconds = 0, 
+      timerInterval, 
+      questionAnswered = false;
+  
+  // Chaves para localStorage
+  const STORAGE_KEYS = {
+    CURRENT_QUESTION: 'quiz_current_question',
+    SCORE: 'quiz_score',
+    USER_ANSWERS: 'quiz_user_answers',
+    SECONDS: 'quiz_seconds',
+    USERNAME: 'quiz_username',
+    QUIZ_IN_PROGRESS: 'quiz_in_progress'
+  };
+
+  // DOM
+  const startSection = document.getElementById('start-section');
+  const quizSection = document.getElementById('quiz-section');
+  const resultsSection = document.getElementById('results-section');
+  const startButton = document.getElementById('start-button');
+  const continueButton = document.getElementById('continue-button');
+  const clearProgressButton = document.getElementById('clear-progress-button');
+  const nextButton = document.getElementById('next-button');
+  const restartButton = document.getElementById('restart-button');
+  const usernameInput = document.getElementById('username');
+  const questionNumber = document.getElementById('question-number');
+  const questionText = document.getElementById('question-text');
+  const optionsContainer = document.getElementById('options-container');
+  const explanationContainer = document.getElementById('explanation');
+  const timerElement = document.getElementById('timer');
+  const finalScore = document.getElementById('final-score');
+  const finalTime = document.getElementById('final-time');
+  const questionsList = document.getElementById('questions-list');
+  const leaderboardBody = document.getElementById('leaderboard-body');
+
+  // Funções de persistência
+  function saveQuizState() {
+    localStorage.setItem(STORAGE_KEYS.CURRENT_QUESTION, currentQuestionIndex);
+    localStorage.setItem(STORAGE_KEYS.SCORE, score);
+    localStorage.setItem(STORAGE_KEYS.USER_ANSWERS, JSON.stringify(userAnswers));
+    localStorage.setItem(STORAGE_KEYS.SECONDS, seconds);
+    localStorage.setItem(STORAGE_KEYS.USERNAME, usernameInput.value);
+    localStorage.setItem(STORAGE_KEYS.QUIZ_IN_PROGRESS, 'true');
+  }
+
+  function loadQuizState() {
+    if (localStorage.getItem(STORAGE_KEYS.QUIZ_IN_PROGRESS) === 'true') {
+      currentQuestionIndex = parseInt(localStorage.getItem(STORAGE_KEYS.CURRENT_QUESTION));
+      score = parseInt(localStorage.getItem(STORAGE_KEYS.SCORE));
+      userAnswers = JSON.parse(localStorage.getItem(STORAGE_KEYS.USER_ANSWERS));
+      seconds = parseInt(localStorage.getItem(STORAGE_KEYS.SECONDS));
+      const savedUsername = localStorage.getItem(STORAGE_KEYS.USERNAME);
+      if (savedUsername) {
+        usernameInput.value = savedUsername;
+      }
+      return true;
+    }
+    return false;
+  }
+
+  function clearQuizState() {
+    localStorage.removeItem(STORAGE_KEYS.CURRENT_QUESTION);
+    localStorage.removeItem(STORAGE_KEYS.SCORE);
+    localStorage.removeItem(STORAGE_KEYS.USER_ANSWERS);
+    localStorage.removeItem(STORAGE_KEYS.SECONDS);
+    localStorage.removeItem(STORAGE_KEYS.USERNAME);
+    localStorage.removeItem(STORAGE_KEYS.QUIZ_IN_PROGRESS);
+  }
+
+  // Verificar se há um quiz em andamento ao carregar a página
+  function checkSavedQuiz() {
+    if (localStorage.getItem(STORAGE_KEYS.QUIZ_IN_PROGRESS) === 'true') {
+      continueButton.style.display = 'block';
+      clearProgressButton.style.display = 'block';
+      
+      // Carregar o nome do usuário se estiver salvo
+      const savedUsername = localStorage.getItem(STORAGE_KEYS.USERNAME);
+      if (savedUsername) {
+        usernameInput.value = savedUsername;
+      }
+    } else {
+      continueButton.style.display = 'none';
+      clearProgressButton.style.display = 'none';
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    startButton.addEventListener('click', startQuiz);
+    continueButton.addEventListener('click', continueQuiz);
+    clearProgressButton.addEventListener('click', clearProgress);
+    nextButton.addEventListener('click', nextQuestion);
+    restartButton.addEventListener('click', restartQuiz);
+    
+    // Verificar se existe um quiz em andamento
+    checkSavedQuiz();
+  });
+
+  function startQuiz() {
+    if (!usernameInput.value.trim()) { 
+      alert('Digite seu nome.'); 
+      return; 
+    }
+    
+    // Limpar qualquer quiz salvo anteriormente
+    clearQuizState();
+    
+    // Inicializar novo quiz
+    currentQuestionIndex = 0;
+    score = 0;
+    userAnswers = [];
+    seconds = 0;
+    
+    startSection.classList.remove('active');
+    quizSection.classList.add('active');
+    timerElement.style.display = 'block';
+    timerInterval = setInterval(() => { 
+      seconds++; 
+      updateTimer();
+      // Salvar estado a cada 10 segundos
+      if (seconds % 10 === 0) {
+        saveQuizState();
+      }
+    }, 1000);
+    
+    loadQuestion();
+    saveQuizState();
+  }
+
+  function continueQuiz() {
+    if (loadQuizState()) {
+      startSection.classList.remove('active');
+      quizSection.classList.add('active');
+      timerElement.style.display = 'block';
+      timerInterval = setInterval(() => { 
+        seconds++; 
+        updateTimer();
+        // Salvar estado a cada 10 segundos
+        if (seconds % 10 === 0) {
+          saveQuizState();
+        }
+      }, 1000);
+      
+      loadQuestion();
+      
+      // Se a questão já foi respondida, exibir explicação e botão de próxima
+      if (currentQuestionIndex < userAnswers.length) {
+        const answerData = userAnswers.find(ans => ans.questionIndex === currentQuestionIndex);
+        if (answerData) {
+          questionAnswered = true;
+          const options = optionsContainer.children;
+          const q = questions[currentQuestionIndex];
+          
+          // Marcar opção correta e incorreta se aplicável
+          options[q.correctIndex].classList.add('correct');
+          if (answerData.userAnswerIndex !== q.correctIndex) {
+            options[answerData.userAnswerIndex].classList.add('incorrect');
+          }
+          
+          // Mostrar explicação e botão de próxima questão
+          explanationContainer.textContent = q.explanation;
+          explanationContainer.style.display = 'block';
+          nextButton.textContent = currentQuestionIndex < questions.length - 1 ? 'Próxima Questão' : 'Ver Resultados';
+          nextButton.style.display = 'block';
+        }
+      }
+    }
+  }
+
+  function clearProgress() {
+    if (confirm('Tem certeza que deseja limpar seu progresso salvo?')) {
+      clearQuizState();
+      continueButton.style.display = 'none';
+      clearProgressButton.style.display = 'none';
+    }
+  }
+
+  function updateTimer() {
+    const m = Math.floor(seconds / 60), s = seconds % 60;
+    timerElement.textContent = `${m < 10 ? '0' + m : m}:${s < 10 ? '0' + s : s}`;
+  }
+
+  function loadQuestion() {
+    questionAnswered = false;
+    explanationContainer.style.display = 'none';
+    nextButton.style.display = 'none';
+    
+    const q = questions[currentQuestionIndex];
+    questionNumber.textContent = `Questão ${currentQuestionIndex + 1} de ${questions.length}`;
+    questionText.textContent = q.question;
+    optionsContainer.innerHTML = '';
+    
+    const letters = ['a', 'b', 'c', 'd', 'e'];
+    q.options.forEach((opt, i) => {
+      const div = document.createElement('div');
+      div.className = 'option';
+      div.textContent = `${letters[i]}) ${opt}`;
+      div.onclick = () => selectOption(i);
+      optionsContainer.appendChild(div);
+    });
+  }
+
+  function selectOption(i) {
+    if (questionAnswered) return;
+    
+    questionAnswered = true;
+    const q = questions[currentQuestionIndex];
+    const opts = optionsContainer.children;
+    opts[q.correctIndex].classList.add('correct');
+    
+    const isCorrect = i === q.correctIndex;
+    if (!isCorrect) opts[i].classList.add('incorrect');
+    if (isCorrect) score++;
+    
+    // Verificar se já existia uma resposta para esta questão
+    const existingAnswerIndex = userAnswers.findIndex(ans => ans.questionIndex === currentQuestionIndex);
+    
+    if (existingAnswerIndex !== -1) {
+      // Atualizar resposta existente
+      userAnswers[existingAnswerIndex] = { 
+        questionIndex: currentQuestionIndex, 
+        userAnswerIndex: i, 
+        isCorrect 
+      };
+    } else {
+      // Adicionar nova resposta
+      userAnswers.push({ 
+        questionIndex: currentQuestionIndex, 
+        userAnswerIndex: i, 
+        isCorrect 
+      });
+    }
+    
+    explanationContainer.textContent = q.explanation;
+    explanationContainer.style.display = 'block';
+    nextButton.textContent = currentQuestionIndex < questions.length - 1 ? 'Próxima Questão' : 'Ver Resultados';
+    nextButton.style.display = 'block';
+    
+    // Salvar estado após responder
+    saveQuizState();
+  }
+
+  function nextQuestion() {
+    currentQuestionIndex++;
+    if (currentQuestionIndex < questions.length) {
+      loadQuestion();
+      saveQuizState();
+    } else {
+      finishQuiz();
+    }
+  }
+
+  function finishQuiz() {
+    clearInterval(timerInterval);
+    quizSection.classList.remove('active');
+    resultsSection.classList.add('active');
+    timerElement.style.display = 'none';
+    
+    finalScore.textContent = `Você acertou ${score} de ${questions.length} questões`;
+    finalTime.textContent = `Tempo total: ${timerElement.textContent}`;
+    
+    displayUserAnswers();
+    sendResultToBackend();
+    loadLeaderboard();
+    
+    // Limpar estado salvo ao finalizar o quiz
+    clearQuizState();
+  }
+
+  function displayUserAnswers() {
+    questionsList.innerHTML = '';
+    const letters = ['a', 'b', 'c', 'd', 'e'];
+    
+    userAnswers.forEach((ans, idx) => {
+      const q = questions[ans.questionIndex];
+      const item = document.createElement('div');
+      item.className = 'question-list-item';
+      item.innerHTML = `
+        <div>
+          <strong>Questão ${idx + 1}:</strong>
+          Você marcou <span class="${ans.isCorrect ? 'text-success' : 'text-danger'}">
+          ${letters[ans.userAnswerIndex]}</span>, correta era <span class="text-success">
+          ${letters[q.correctIndex]}</span>
+        </div>
+      `;
+      
+      const detail = document.createElement('div');
+      detail.className = 'question-detail';
+      detail.innerHTML = `
+        <p><strong>${q.question}</strong></p>
+        ${q.options.map((opt, i) => `
+          <div class="option ${i === q.correctIndex ? 'correct' : ''} ${i === ans.userAnswerIndex && i !== q.correctIndex ? 'incorrect' : ''}">
+            ${letters[i]}) ${opt}
+          </div>
+        `).join('')}
+        <div class="explanation" style="display:block;">${q.explanation}</div>
+      `;
+      
+      item.onclick = () => detail.style.display = detail.style.display === 'block' ? 'none' : 'block';
+      item.appendChild(detail);
+      questionsList.appendChild(item);
+    });
+  }
+
+  // Funções para leaderboard e backend
+
+  function resultadoInserido(res) {
+    console.log('Inserido:', res);
+    loadLeaderboard();
+  }
+
+  function sendResultToBackend() {
+    // Implementar lógica de envio para backend se necessário
+    // Exemplo: enviar via API ou registrar localmente
+    try {
+      // Se existir um método específico para enviar resultados ao backend, use-o aqui
+      // Caso contrário, pode-se implementar uma solução local usando localStorage
+      
+      const leaderboardData = JSON.parse(localStorage.getItem('quiz_leaderboard') || '[]');
+      const newResult = {
+        usuario: usernameInput.value,
+        pontuacao: score,
+        tempo: seconds
+      };
+      
+      leaderboardData.push(newResult);
+      // Ordenar por pontuação (decrescente) e depois por tempo (crescente)
+      leaderboardData.sort((a, b) => {
+        if (b.pontuacao !== a.pontuacao) return b.pontuacao - a.pontuacao;
+        return a.tempo - b.tempo;
+      });
+      
+      localStorage.setItem('quiz_leaderboard', JSON.stringify(leaderboardData));
+      
+      // Chamar função que atualiza a tabela
+      atualizaLeaderboard(leaderboardData);
+    } catch (error) {
+      console.error('Erro ao salvar resultado:', error);
+    }
+  }
+
+  function loadLeaderboard() {
+    try {
+      // Carregar dados do leaderboard do localStorage
+      const leaderboardData = JSON.parse(localStorage.getItem('quiz_leaderboard') || '[]');
+      atualizaLeaderboard(leaderboardData);
+    } catch (error) {
+      console.error('Erro ao carregar leaderboard:', error);
+    }
+  }
+
+  function atualizaLeaderboard(data) {
+    leaderboardBody.innerHTML = '';
+    data.forEach((e, i) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${i + 1}</td><td>${e.usuario}</td><td>${e.pontuacao}</td><td>${e.tempo < 60 ? '00:' + ('0' + e.tempo).slice(-2) : Math.floor(e.tempo / 60).toString().padStart(2, '0') + ':' + ('0' + e.tempo % 60).slice(-2)}</td>`;
+      leaderboardBody.appendChild(tr);
+    });
+  }
+
+  function restartQuiz() {
+    clearQuizState();
+    resultsSection.classList.remove('active');
+    startSection.classList.add('active');
+    usernameInput.value = '';
+    checkSavedQuiz();
+    usernameInput.focus();
+  }
+
+  // Adicionar evento para salvar o estado quando a página for fechada
+  window.addEventListener('beforeunload', () => {
+    if (quizSection.classList.contains('active')) {
+      saveQuizState();
+    }
+  });
+</script>
+
+</body>
+</html>
